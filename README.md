@@ -6,7 +6,7 @@ A small Caliburn.Micro extension that allows you to expose Model properties thro
 Usage
 ----------
 
-Hook up the property binding to Caliburn.Micro by setting the `ViewModelBinder.BindProperties`:
+Hook up the property binding to Caliburn.Micro by setting `ViewModelBinder.BindProperties`:
 
     ViewModelBinder.BindProperties = ExposedPropertyBinder.BindProperties;
 	
@@ -49,5 +49,5 @@ And bind to the new properties:
 
     <TextBlock x:Name="FirstName" />
     <TextBlock x:Name="LastName" />
-    <TextBlock x:Name="ZipCode" />                //
+    <TextBlock x:Name="ZipCode" />
     <TextBlock x:Name="Person_ZipCode" />    // ZipCode and Person_ZipCode are the same ;)
