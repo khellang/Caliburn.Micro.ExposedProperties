@@ -9,74 +9,94 @@ namespace Caliburn.Micro.PropertyExposing
     {
         private static readonly ILog Log = LogManager.GetLog(typeof(ExposedPropertyBinder));
 
+        public static readonly List<FrameworkElement> UnhandledElements = new List<FrameworkElement>();
+
         public static IEnumerable<FrameworkElement> BindProperties(IEnumerable<FrameworkElement> elements, Type viewModelType)
         {
+            UnhandledElements.Clear();
+
             foreach (var element in elements)
             {
                 var cleanName = element.Name.Trim('_');
-                var parts = cleanName.Split(new[] { '_' }, StringSplitOptions.RemoveEmptyEntries);
+                if (string.IsNullOrEmpty(cleanName))
+                {
+                    SkipElement(element, "Element {0} did not match a property.", element.Name);
+                    continue;
+                }
+
+                // Split name in parts
+                var nameParts = cleanName.Split(new[] { '_' }, StringSplitOptions.RemoveEmptyEntries);
 
                 // Get first exposed property
-                var exposedPropertyInfo = GetExposedPropertyInfo(viewModelType, parts[0]);
-                if (exposedPropertyInfo == null)
+                var exposedProperty = GetExposedProperty(viewModelType, nameParts);
+                if (exposedProperty == null)
                 {
-                    Log.Info("Binding Convention Not Applied: Element {0} did not match a property.", element.Name);
-                    yield return element;
+                    SkipElement(element, "Element {0} did not match a property.", element.Name);
                     continue;
                 }
 
-                var path = GetPropertyPath(parts, exposedPropertyInfo);
-                if (string.IsNullOrEmpty(path))
-                {
-                    Log.Info("Binding Convention Not Applied: Element {0} did not match a property.", element.Name);
-                    yield return element;
-                    continue;
-                }
-
+                // Get convetion for element type
                 var convention = ConventionManager.GetElementConvention(element.GetType());
                 if (convention == null)
                 {
-                    Log.Warn("Binding Convention Not Applied: No conventions configured for {0}.", element.GetType());
-                    yield return element;
+                    SkipElement(element, "No conventions configured for {0}.", element.GetType());
                     continue;
                 }
 
-                var applied = convention.ApplyBinding(exposedPropertyInfo.ViewModelType, path, exposedPropertyInfo.Property, element, convention);
+                // Apply convention binding to element
+                var applied = convention.Bind(exposedProperty, element);
+                if (!applied)
+                {
+                    SkipElement(element, "Element {0} has existing binding.", element.Name);
+                    continue;
+                }
 
-                if (applied)
-                {
-                    Log.Info("Binding Convention Applied: Element {0}.", element.Name);
-                }
-                else
-                {
-                    Log.Info("Binding Convention Not Applied: Element {0} has existing binding.", element.Name);
-                    yield return element;
-                }
+                Log.Info("Binding Convention Applied: Element {0}.", element.Name);
             }
+
+            return UnhandledElements;
         }
 
-        private static string GetPropertyPath(IList<string> parts, ExposedPropertyInfo exposedPropertyInfo)
+        private static void SkipElement(FrameworkElement element, string format, params object[] args)
         {
+            Log.Info("Binding Convention Not Applied: {0}", string.Format(format, args));
+            UnhandledElements.Add(element);
+        }
+
+        private static ExposedPropertyInfo GetExposedProperty(Type rootViewModelType, IList<string> nameParts)
+        {
+            var exposedPropertyInfo = GetExposedProperty(rootViewModelType, nameParts[0]);
+
             // Use a list to make a breadcrumb for the property path
             var breadCrumb = new List<string> { exposedPropertyInfo.Path };
 
             // Loop over all parts and get exposed properties
-            for (var i = 1; i < parts.Count; i++)
+            for (var i = 1; i < nameParts.Count; i++)
             {
-                exposedPropertyInfo = GetExposedPropertyInfo(exposedPropertyInfo.ViewModelType, parts[i]);
+                exposedPropertyInfo = GetExposedProperty(exposedPropertyInfo.ViewModelType, nameParts[i]);
                 if (exposedPropertyInfo == null) return null;
 
                 breadCrumb.Add(exposedPropertyInfo.Path);
             }
 
-            return string.Join(".", breadCrumb);
+            exposedPropertyInfo.Path = string.Join(".", breadCrumb);
+
+            return exposedPropertyInfo;
         }
 
-        private static ExposedPropertyInfo GetExposedPropertyInfo(Type type, string propertyName)
+        private static ExposedPropertyInfo GetExposedProperty(Type type, string propertyName)
         {
             // First, check if the type has a matching property.
             var regularProperty = type.GetPropertyCaseInsensitive(propertyName);
-            if (regularProperty != null) return new ExposedPropertyInfo(regularProperty);
+            if (regularProperty != null)
+            {
+                return new ExposedPropertyInfo
+                {
+                    ViewModelType = regularProperty.PropertyType,
+                    Path = regularProperty.Name,
+                    Property = regularProperty
+                };
+            }
 
             // Check all properties to see if they expose any properties.
             var allProperties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public);
@@ -91,7 +111,7 @@ namespace Caliburn.Micro.PropertyExposing
                 var exposedPropertyName = exposeAttribute.ModelPropertyName ?? exposeAttribute.PropertyName;
 
                 // Get exposed property info
-                var exposedPropertyInfo = GetExposedPropertyInfo(property, exposedPropertyName);
+                var exposedPropertyInfo = GetExposedChildProperty(property, exposedPropertyName);
                 if (exposedPropertyInfo == null) continue;
 
                 return exposedPropertyInfo;
@@ -100,50 +120,40 @@ namespace Caliburn.Micro.PropertyExposing
             return null;
         }
 
-        private static ExposedPropertyInfo GetExposedPropertyInfo(PropertyInfo property, string exposedPropertyName)
+        private static ExposedPropertyInfo GetExposedChildProperty(PropertyInfo parentProperty, string propertyName)
         {
-            var propertyType = property.PropertyType;
+            var viewModelType = parentProperty.PropertyType;
 
             // Check if property exists
-            var exposedProperty = propertyType.GetPropertyCaseInsensitive(exposedPropertyName);
-            if (exposedProperty == null)
+            var regularProperty = viewModelType.GetPropertyCaseInsensitive(propertyName);
+            if (regularProperty != null)
             {
-                // Do recursive check for exposed properties
-                var child = GetExposedPropertyInfo(propertyType, exposedPropertyName);
-                if (child == null) return null;
-
-                return new ExposedPropertyInfo(child.ViewModelType, string.Join(".", property.Name, child.Path), child.Property);
+                return new ExposedPropertyInfo
+                {
+                    ViewModelType = regularProperty.PropertyType,
+                    Path = string.Join(".", parentProperty.Name, regularProperty.Name),
+                    Property = regularProperty
+                };
             }
 
-            return new ExposedPropertyInfo(exposedProperty.PropertyType, string.Join(".", property.Name, exposedPropertyName), exposedProperty);
+            // Do recursive check for exposed properties
+            var exposedProperty = GetExposedProperty(viewModelType, propertyName);
+            if (exposedProperty != null)
+            {
+                return new ExposedPropertyInfo
+                {
+                    ViewModelType = exposedProperty.ViewModelType,
+                    Path = string.Join(".", parentProperty.Name, exposedProperty.Path),
+                    Property = exposedProperty.Property
+                };
+            }
+
+            return null;
         }
 
         private static ExposeAttribute GetExposeAttribute(MemberInfo property, string propertyName)
         {
             return property.GetCustomAttribute<ExposeAttribute>(a => a.Matches(propertyName));
-        }
-
-        private class ExposedPropertyInfo
-        {
-            public ExposedPropertyInfo(PropertyInfo regularProperty)
-            {
-                ViewModelType = regularProperty.PropertyType;
-                Path = regularProperty.Name;
-                Property = regularProperty;
-            }
-
-            public ExposedPropertyInfo(Type viewModelType, string path, PropertyInfo property)
-            {
-                ViewModelType = viewModelType;
-                Path = path;
-                Property = property;
-            }
-
-            public Type ViewModelType { get; private set; }
-
-            public string Path { get; private set; }
-
-            public PropertyInfo Property { get; private set; }
         }
     }
 }
