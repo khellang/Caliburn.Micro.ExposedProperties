@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Windows;
 
@@ -12,8 +11,6 @@ namespace Caliburn.Micro.PropertyExposing
 
         public static IEnumerable<FrameworkElement> BindProperties(IEnumerable<FrameworkElement> elements, Type viewModelType)
         {
-            var unmatchedElements = new List<FrameworkElement>();
-
             foreach (var element in elements)
             {
                 var cleanName = element.Name.Trim('_');
@@ -24,28 +21,15 @@ namespace Caliburn.Micro.PropertyExposing
                 if (exposedPropertyInfo == null)
                 {
                     Log.Info("Binding Convention Not Applied: Element {0} did not match a property.", element.Name);
-                    unmatchedElements.Add(element);
+                    yield return element;
                     continue;
                 }
 
-                // Use a list to make a breadcrumb for the property path
-                var breadCrumb = new List<string> { exposedPropertyInfo.Path };
-
-                // Loop over all parts and get exposed properties
-                for (var i = 1; i < parts.Length; i++)
-                {
-                    var exposedViewModelType = exposedPropertyInfo.ViewModelType;
-
-                    exposedPropertyInfo = GetExposedPropertyInfo(exposedViewModelType, parts[i]);
-                    if (exposedPropertyInfo == null) break;
-
-                    breadCrumb.Add(exposedPropertyInfo.Path);
-                }
-
-                if (exposedPropertyInfo == null)
+                var path = GetPropertyPath(parts, exposedPropertyInfo);
+                if (string.IsNullOrEmpty(path))
                 {
                     Log.Info("Binding Convention Not Applied: Element {0} did not match a property.", element.Name);
-                    unmatchedElements.Add(element);
+                    yield return element;
                     continue;
                 }
 
@@ -53,11 +37,10 @@ namespace Caliburn.Micro.PropertyExposing
                 if (convention == null)
                 {
                     Log.Warn("Binding Convention Not Applied: No conventions configured for {0}.", element.GetType());
-                    unmatchedElements.Add(element);
+                    yield return element;
                     continue;
                 }
 
-                var path = string.Join(".", breadCrumb);
                 var applied = convention.ApplyBinding(exposedPropertyInfo.ViewModelType, path, exposedPropertyInfo.Property, element, convention);
 
                 if (applied)
@@ -67,20 +50,38 @@ namespace Caliburn.Micro.PropertyExposing
                 else
                 {
                     Log.Info("Binding Convention Not Applied: Element {0} has existing binding.", element.Name);
-                    unmatchedElements.Add(element);
+                    yield return element;
                 }
             }
+        }
 
-            return unmatchedElements;
+        private static string GetPropertyPath(IList<string> parts, ExposedPropertyInfo exposedPropertyInfo)
+        {
+            // Use a list to make a breadcrumb for the property path
+            var breadCrumb = new List<string> { exposedPropertyInfo.Path };
+
+            // Loop over all parts and get exposed properties
+            for (var i = 1; i < parts.Count; i++)
+            {
+                exposedPropertyInfo = GetExposedPropertyInfo(exposedPropertyInfo.ViewModelType, parts[i]);
+                if (exposedPropertyInfo == null) return null;
+
+                breadCrumb.Add(exposedPropertyInfo.Path);
+            }
+
+            return string.Join(".", breadCrumb);
         }
 
         private static ExposedPropertyInfo GetExposedPropertyInfo(Type type, string propertyName)
         {
-            var exposedProperty = type.GetPropertyCaseInsensitive(propertyName);
-            if (exposedProperty != null)
-                return new ExposedPropertyInfo(exposedProperty.PropertyType, exposedProperty.Name, exposedProperty);
+            // First, check if the type has a matching property.
+            var regularProperty = type.GetPropertyCaseInsensitive(propertyName);
+            if (regularProperty != null) return new ExposedPropertyInfo(regularProperty);
 
-            foreach (var property in type.GetProperties())
+            // Check all properties to see if they expose any properties.
+            var allProperties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public);
+
+            foreach (var property in allProperties)
             {
                 // Get first ExposeAttribute which matches property name
                 var exposeAttribute = GetExposeAttribute(property, propertyName);
@@ -117,16 +118,20 @@ namespace Caliburn.Micro.PropertyExposing
             return new ExposedPropertyInfo(exposedProperty.PropertyType, string.Join(".", property.Name, exposedPropertyName), exposedProperty);
         }
 
-        private static ExposeAttribute GetExposeAttribute(PropertyInfo property, string propertyName)
+        private static ExposeAttribute GetExposeAttribute(MemberInfo property, string propertyName)
         {
-            return property
-                .GetCustomAttributes(typeof(ExposeAttribute), true)
-                .Cast<ExposeAttribute>()
-                .FirstOrDefault(a => a.PropertyName.Equals(propertyName, StringComparison.OrdinalIgnoreCase));
+            return property.GetCustomAttribute<ExposeAttribute>(a => a.Matches(propertyName));
         }
 
         private class ExposedPropertyInfo
         {
+            public ExposedPropertyInfo(PropertyInfo regularProperty)
+            {
+                ViewModelType = regularProperty.PropertyType;
+                Path = regularProperty.Name;
+                Property = regularProperty;
+            }
+
             public ExposedPropertyInfo(Type viewModelType, string path, PropertyInfo property)
             {
                 ViewModelType = viewModelType;
