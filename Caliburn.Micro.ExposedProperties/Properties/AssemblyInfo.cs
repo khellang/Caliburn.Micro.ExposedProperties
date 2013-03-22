@@ -4,11 +4,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("Caliburn.Micro.PropertyExposing")]
+[assembly: AssemblyTitle("Caliburn.Micro.ExposedProperties")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("Caliburn.Micro.PropertyExposing")]
+[assembly: AssemblyProduct("Caliburn.Micro.ExposedProperties")]
 [assembly: AssemblyCopyright("Copyright © Kristian Hellang 2012")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
