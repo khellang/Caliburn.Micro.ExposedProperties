@@ -1,4 +1,4 @@
-Caliburn.Micro.PropertyExposing
+Caliburn.Micro.ExposedProperties
 =============================
 
 A small Caliburn.Micro extension that allows you to expose Model properties through a ViewModel with a simple attribute.
