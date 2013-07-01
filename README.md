@@ -8,9 +8,13 @@ Usage
 
 Hook up the property binding to Caliburn.Micro by setting `ViewModelBinder.BindProperties`:
 
+<!-- language: csharp -->
+
     ViewModelBinder.BindProperties = ExposedPropertyBinder.BindProperties;
 	
 Decorate your ViewModel properties with the `ExposeAttribute`:
+
+<!-- language: csharp -->
 
     public class MyViewModel : PropertyChangedBase
     {
@@ -46,6 +50,8 @@ Decorate your ViewModel properties with the `ExposeAttribute`:
     }
 	
 And bind to the new properties:
+
+<!-- language: xml -->
 
     <TextBlock x:Name="FirstName" />
     <TextBlock x:Name="LastName" />
