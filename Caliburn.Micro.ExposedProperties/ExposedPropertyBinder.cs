@@ -64,8 +64,6 @@ namespace Caliburn.Micro.ExposedProperties
                 bindableProperty = GetBindableProperty(viewModelType, namePart, currentPath);
                 if (bindableProperty == null) return null;
 
-                Debug.Print(bindableProperty.Path);
-
                 viewModelType = bindableProperty.Property.PropertyType;
                 currentPath = bindableProperty.Path;
             }
@@ -107,19 +105,19 @@ namespace Caliburn.Micro.ExposedProperties
             Log.Info("Binding Convention Not Applied: {0}", string.Format(format, args));
             UnhandledElements.Add(element);
         }
-    }
-
-    internal class BindablePropertyInfo
-    {
-        public BindablePropertyInfo(PropertyInfo property, string path)
+        
+        internal class BindablePropertyInfo
         {
-            Property = property;
-            Path = path;
+            public BindablePropertyInfo(PropertyInfo property, string path)
+            {
+                Property = property;
+                Path = path;
+            }
+    
+            public string Path { get; private set; }
+    
+            public PropertyInfo Property { get; private set; }
         }
-
-        public string Path { get; private set; }
-
-        public PropertyInfo Property { get; private set; }
     }
 
     internal static class HelperExtensions
