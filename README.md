@@ -8,52 +8,52 @@ Usage
 
 Hook up the property binding to Caliburn.Micro by setting `ViewModelBinder.BindProperties`:
 
-<!-- language: csharp -->
-
-    ViewModelBinder.BindProperties = ExposedPropertyBinder.BindProperties;
+```csharp
+ViewModelBinder.BindProperties = ExposedPropertyBinder.BindProperties;
+```
 	
 Decorate your ViewModel properties with the `ExposeAttribute`:
 
-<!-- language: csharp -->
+```csharp
+public class MyViewModel : PropertyChangedBase
+{
+    private Person _person;
 
-    public class MyViewModel : PropertyChangedBase
+    [Expose("FirstName")]
+    [Expose("LastName")]
+    [Expose("ZipCode")]
+    public Person Person
     {
-        private Person _person;
-
-        [Expose("FirstName")]
-        [Expose("LastName")]
-        [Expose("ZipCode")]
-        public Person Person
+        get { return _person; }
+        set
         {
-            get { return _person; }
-            set
-            {
-                _person = value;
-                NotifyOfPropertyChange(() => Person);
-            }
+            _person = value;
+            NotifyOfPropertyChange(() => Person);
         }
     }
+}
 
-    public class Person
-    {
-        public string FirstName { get; set; }
+public class Person
+{
+    public string FirstName { get; set; }
 
-        public string LastName { get; set; }
+    public string LastName { get; set; }
 
-        [Expose("ZipCode", "zip_code")]
-        public Address Address { get; set; }
-    }
+    [Expose("ZipCode", "zip_code")]
+    public Address Address { get; set; }
+}
 
-    public class Address
-    {
-        public string zip_code { get; set; }
-    }
+public class Address
+{
+    public string zip_code { get; set; }
+}
+```
 	
 And bind to the new properties:
 
-<!-- language: xml -->
-
-    <TextBlock x:Name="FirstName" />
-    <TextBlock x:Name="LastName" />
-    <TextBlock x:Name="ZipCode" />
-    <TextBlock x:Name="Person_ZipCode" />    // ZipCode and Person_ZipCode are the same ;)
+```xml
+<TextBlock x:Name="FirstName" />
+<TextBlock x:Name="LastName" />
+<TextBlock x:Name="ZipCode" />
+<TextBlock x:Name="Person_ZipCode" /> <!-- ZipCode and Person_ZipCode are the same ;) -->
+```
