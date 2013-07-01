@@ -15,138 +15,83 @@ namespace Caliburn.Micro.ExposedProperties.Tests
         [Test]
         public void SimplePropertiesAreBound()
         {
-            var button = GetNamedElement<Button>("FirstName");
-            var textBlock = GetNamedElement<TextBlock>("LastName");
-
-            var unhandled = ExposedPropertyBinder.BindProperties(new FrameworkElement[] { button, textBlock }, typeof(TestViewModel));
-
-            Assert.That(unhandled.Any(), Is.False);
+            TestElements<TestViewModel>(0, new FrameworkElement[] { Element<Button>("FirstName"), Element<TextBlock>("LastName") });
         }
 
         [Test]
         public void ElementsWithBlankOrUnderscoreNameAreSkipped()
         {
-            var button = GetNamedElement<Button>("_");
-            var textBlock = GetNamedElement<TextBlock>("");
-
-            var unhandled = ExposedPropertyBinder.BindProperties(new FrameworkElement[] { button, textBlock }, typeof(TestViewModel)).ToList();
-
-            Assert.That(unhandled, Has.Count.EqualTo(2));
+            TestElements<TestViewModel>(2, new FrameworkElement[] { Element<Button>("_"), Element<TextBlock>(string.Empty) });
         }
 
         [Test]
         public void ElementsWithNoMatchingPropertyAreSkipped()
         {
-            var button = GetNamedElement<Button>("Foo");
-            var textBlock = GetNamedElement<TextBlock>("Bar");
-
-            var unhandled = ExposedPropertyBinder.BindProperties(new FrameworkElement[] { button, textBlock }, typeof(TestViewModel)).ToList();
-
-            Assert.That(unhandled, Has.Count.EqualTo(2));
+            TestElements<TestViewModel>(2, new FrameworkElement[] { Element<Button>("Foo"), Element<TextBlock>("Bar") });
         }
 
         [Test]
         public void ElementsWithExistingBindingAreSkipped()
         {
-            var binding = new Binding("FirstName");
-            var button = GetNamedElement<Button>("FirstName", b => b.SetBinding(ContentControl.ContentProperty, binding));
-
-            var unhandled = ExposedPropertyBinder.BindProperties(new FrameworkElement[] { button }, typeof(TestViewModel)).ToList();
-
-            Assert.That(unhandled, Has.Count.EqualTo(1));
+            TestElements<TestViewModel>(1, Element<Button>("FirstName", e => e.SetBinding(ContentControl.ContentProperty, new Binding("FirstName"))));
         }
 
         [Test]
         public void MultipartExistingPathsAreBound()
         {
-            var button = GetNamedElement<Button>("Child_Address");
-            var textBlock = GetNamedElement<TextBlock>("Child_DeepChild_DeepString");
-
-            var unhandled = ExposedPropertyBinder.BindProperties(new FrameworkElement[] { button, textBlock }, typeof(TestViewModel)).ToList();
-
-            Assert.That(unhandled.Any(), Is.False);
+            TestElements<TestViewModel>(0, new FrameworkElement[] { Element<Button>("Child_Address"), Element<TextBlock>("Child_DeepChild_DeepString") });
         }
 
         [Test]
         public void MultipartNonExistingPathsAreSkipped()
         {
-            var button = GetNamedElement<Button>("Child_Foo");
-
-            var unhandled = ExposedPropertyBinder.BindProperties(new FrameworkElement[] { button }, typeof(TestViewModel)).ToList();
-
-            Assert.That(unhandled, Has.Count.EqualTo(1));
+            TestElements<TestViewModel>(1, Element<Button>("Child_Foo"));
         }
 
         [Test]
         public void SimpleExposedPropertiesAreBound()
         {
-            var button = GetNamedElement<Button>("Address");
-
-            var unhandled = ExposedPropertyBinder.BindProperties(new FrameworkElement[] { button }, typeof(TestViewModel)).ToList();
-
-            Assert.That(unhandled.Any(), Is.False);
+            TestElements<TestViewModel>(0, Element<Button>("Address"));
         }
 
         [Test]
         public void AliasedExposedPropertiesAreBound()
         {
-            var button = GetNamedElement<Button>("Testing");
-
-            var unhandled = ExposedPropertyBinder.BindProperties(new FrameworkElement[] { button }, typeof(TestViewModel)).ToList();
-
-            Assert.That(unhandled.Any(), Is.False);
+            TestElements<TestViewModel>(0, Element<Button>("Testing"));
         }
 
-        [Test]
-        public void MultipartExposedPropertiesAreBound()
+        [TestCase("Child_Testing")]
+        [TestCase("Testing_Length")]
+        public void MultipartExposedPropertiesAreBound(string elementName)
         {
-            var button = GetNamedElement<Button>("Child_Testing");
-
-            var unhandled = ExposedPropertyBinder.BindProperties(new FrameworkElement[] { button }, typeof(TestViewModel)).ToList();
-
-            Assert.That(unhandled.Any(), Is.False);
-        }
-
-        [Test]
-        public void MultipartExposedPropertiesAreBound2()
-        {
-            var button = GetNamedElement<Button>("Testing_Length");
-
-            var unhandled = ExposedPropertyBinder.BindProperties(new FrameworkElement[] { button }, typeof(TestViewModel)).ToList();
-
-            Assert.That(unhandled.Any(), Is.False);
+            TestElements<TestViewModel>(0, Element<Button>(elementName));
         }
 
         [Test]
         public void MultipartNonExistingExposedPropertiesAreSkipped()
         {
-            var button = GetNamedElement<Button>("ZipCode");
-
-            var unhandled = ExposedPropertyBinder.BindProperties(new FrameworkElement[] { button }, typeof(TestViewModel)).ToList();
-
-            Assert.That(unhandled, Has.Count.EqualTo(1));
+            TestElements<TestViewModel>(1, Element<Button>("ZipCode"));
         }
 
         [Test]
         public void PropertiesWithExposedNonExisingPropertyNamesAreSkipped()
         {
-            var button = GetNamedElement<Button>("Child_Foo");
-            var textBlock = GetNamedElement<TextBlock>("Child_Testing_Foo");
-
-            var unhandled = ExposedPropertyBinder.BindProperties(new FrameworkElement[] { button, textBlock }, typeof(TestViewModel)).ToList();
-
-            Assert.That(unhandled, Has.Count.EqualTo(2));
+            TestElements<TestViewModel>(2, new FrameworkElement[] { Element<Button>("Child_Foo"), Element<TextBlock>("Child_Testing_Foo") });
         }
 
-        private static TElement GetNamedElement<TElement>(string name, Action<TElement> initializer = null) 
+        private static TElement Element<TElement>(string name, Action<TElement> initializer = null)
             where TElement : FrameworkElement, new()
         {
             var element = new TElement { Name = name };
-
-            if (initializer != null)
-                initializer.Invoke(element);
+            if (initializer != null) initializer(element);
 
             return element;
+        }
+
+        private static void TestElements<TViewModel>(int expectedCount, params FrameworkElement[] elements)
+        {
+            var unmatchedElements = ExposedPropertyBinder.BindProperties(elements, typeof(TViewModel)).ToList();
+            Assert.That(unmatchedElements, Has.Count.EqualTo(expectedCount));
         }
     }
 
