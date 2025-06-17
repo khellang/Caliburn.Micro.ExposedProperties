@@ -57,3 +57,11 @@ And bind to the new properties:
 <TextBlock x:Name="ZipCode" />
 <TextBlock x:Name="Person_ZipCode" /> <!-- ZipCode and Person_ZipCode are the same ;) -->
 ```
+
+## Sponsors
+
+[Entity Framework Extensions](https://entityframework-extensions.net/?utm_source=khellang&utm_medium=Caliburn.Micro.ExposedProperties) and [Dapper Plus](https://dapper-plus.net/?utm_source=khellang&utm_medium=Caliburn.Micro.ExposedProperties) are major sponsors and proud to contribute to the development of Caliburn.Micro.ExposedProperties.
+
+[![Entity Framework Extensions](https://raw.githubusercontent.com/khellang/khellang/refs/heads/master/.github/entity-framework-extensions-sponsor.png)](https://entityframework-extensions.net/bulk-insert?utm_source=khellang&utm_medium=Caliburn.Micro.ExposedProperties)
+
+[![Dapper Plus](https://raw.githubusercontent.com/khellang/khellang/refs/heads/master/.github/dapper-plus-sponsor.png)](https://dapper-plus.net/bulk-insert?utm_source=khellang&utm_medium=Caliburn.Micro.ExposedProperties)
